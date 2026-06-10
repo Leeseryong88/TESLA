@@ -685,7 +685,6 @@ function AdminPage() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [adminAllowed, setAdminAllowed] = useState(false);
-  const [checkingAdmin, setCheckingAdmin] = useState(false);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [reservationsLoading, setReservationsLoading] = useState(true);
   const [reservationPeriod, setReservationPeriod] = useState<ReservationPeriod | null>(null);
@@ -694,24 +693,10 @@ function AdminPage() {
   const [deletingId, setDeletingId] = useState("");
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (nextUser) => {
+    return onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
       setAuthLoading(false);
-      setAdminAllowed(false);
-
-      if (!nextUser) {
-        setCheckingAdmin(false);
-        return;
-      }
-
-      setCheckingAdmin(true);
-      try {
-        setAdminAllowed(await isAdminUser(nextUser));
-      } catch {
-        setAdminAllowed(false);
-      } finally {
-        setCheckingAdmin(false);
-      }
+      setAdminAllowed(nextUser ? isAdminUser(nextUser) : false);
     });
   }, []);
 
@@ -846,9 +831,9 @@ function AdminPage() {
         ) : null}
       </header>
 
-      {authLoading || checkingAdmin ? (
+      {authLoading ? (
         <section className="panel admin-card">
-          <div className="empty-state">권한을 확인하는 중입니다.</div>
+          <div className="empty-state">로그인 상태를 확인하는 중입니다.</div>
         </section>
       ) : !user ? (
         <section className="panel admin-card" aria-label="관리자 로그인">
@@ -888,7 +873,7 @@ function AdminPage() {
         <section className="panel admin-card">
           <div className="empty-state">
             <strong>관리자 권한이 없습니다.</strong>
-            <span>custom claim 또는 UID allowlist 설정이 필요합니다.</span>
+            <span>VITE_ADMIN_UIDS와 firestore.rules에 관리자 UID를 추가하세요.</span>
           </div>
         </section>
       ) : (

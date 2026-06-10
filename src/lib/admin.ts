@@ -5,7 +5,6 @@ const configuredAdminUids = (import.meta.env.VITE_ADMIN_UIDS ?? "")
   .map((uid) => uid.trim())
   .filter(Boolean);
 
-export async function isAdminUser(user: User) {
-  const token = await user.getIdTokenResult(true);
-  return token.claims.admin === true || configuredAdminUids.includes(user.uid);
+export function isAdminUser(user: User) {
+  return configuredAdminUids.includes(user.uid);
 }
