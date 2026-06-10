@@ -708,7 +708,7 @@ button:not(:disabled) {
 }
 
 .admin-shell {
-  max-width: 1040px;
+  max-width: 1180px;
 }
 
 .admin-header {
@@ -727,16 +727,11 @@ button:not(:disabled) {
   margin: 0;
 }
 
-.settings-copy,
-.settings-current {
+.settings-copy {
   margin: 0 0 16px;
   color: #5f646b;
   font-size: 0.92rem;
   line-height: 1.55;
-}
-
-.settings-current strong {
-  color: #111113;
 }
 
 .period-form {
@@ -744,18 +739,382 @@ button:not(:disabled) {
   align-items: end;
 }
 
-.period-form .primary-button {
+.admin-period-form .primary-button {
+  width: auto;
+}
+
+.admin-period-modal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   grid-column: 1 / -1;
+}
+
+.admin-period-modal-actions .primary-button,
+.admin-period-modal-actions .secondary-button {
+  width: 100%;
+}
+
+.admin-period-summary-empty {
+  border-color: #eadfce;
+  background: #fffaf4;
 }
 
 .admin-layout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   gap: 16px;
+  align-items: start;
 }
 
-.admin-layout .list-panel {
-  grid-column: 1 / -1;
+.admin-calendar-panel {
+  padding: 16px;
+}
+
+.admin-calendar-heading {
+  margin-bottom: 12px;
+}
+
+.admin-calendar-heading h2 {
+  font-size: 1.08rem;
+}
+
+.admin-month-controls {
+  grid-template-columns: 28px minmax(88px, auto) 28px;
+}
+
+.admin-month-controls strong {
+  font-size: 0.88rem;
+}
+
+.admin-calendar-weekdays {
+  margin-bottom: 6px;
+  font-size: 0.68rem;
+}
+
+.admin-calendar-grid {
+  gap: 3px;
+}
+
+.admin-calendar-day {
+  aspect-ratio: auto;
+  min-height: 42px;
+  padding: 4px 2px;
+  border-radius: 6px;
+}
+
+.admin-calendar-day span {
+  font-size: 0.82rem;
+}
+
+.admin-calendar-day small {
+  font-size: 0.58rem;
+  line-height: 1.15;
+}
+
+.admin-calendar-reservation-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-calendar-legend {
+  gap: 8px 10px;
+  margin-top: 10px;
+  font-size: 0.72rem;
+}
+
+.admin-date-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d8e3dc;
+  border-radius: 8px;
+  background: #f5faf7;
+  color: #4f5650;
+  font-size: 0.86rem;
+}
+
+.admin-date-filter strong {
+  color: #111113;
+}
+
+.admin-date-filter-clear {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.82rem;
+}
+
+.admin-filter-tabs-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.admin-list-panel {
+  padding: 20px;
+}
+
+.admin-list-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-list-header h2 {
+  margin: 0;
+  color: #111113;
+  font-size: 1.18rem;
+}
+
+.admin-list-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-period-button {
+  min-height: 38px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.admin-period-bar {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border: 1px solid #dce5df;
+  border-radius: 8px;
+  background: #f7faf8;
+}
+
+.admin-period-bar-unset {
+  border-color: #eadfce;
+  background: #fffaf4;
+}
+
+.admin-period-status {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-period-status .section-kicker {
+  margin-bottom: 2px;
+}
+
+.admin-period-status strong {
+  color: #111113;
+  font-size: 0.98rem;
+}
+
+.admin-period-status span {
+  color: #626770;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.admin-period-bar-unset .admin-period-status strong {
+  color: #9a5d19;
+}
+
+.admin-list-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.admin-search-field input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid #d9dbd7;
+  border-radius: 8px;
+  outline: none;
+  background: #ffffff;
+  color: #111113;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.admin-search-field input:focus {
+  border-color: #111113;
+  box-shadow: 0 0 0 4px rgba(17, 17, 19, 0.08);
+}
+
+.admin-filter-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.admin-filter-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #dde0dc;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #4d5259;
+  font-size: 0.84rem;
+  font-weight: 760;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.admin-filter-tabs button span {
+  min-width: 18px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eef0f2;
+  color: #525860;
+  font-size: 0.76rem;
+  font-weight: 780;
+}
+
+.admin-filter-tabs button.active {
+  border-color: #111113;
+  background: #111113;
+  color: #ffffff;
+}
+
+.admin-filter-tabs button.active span {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.admin-list-summary {
+  margin: 0 0 10px;
+  color: #6d7279;
+  font-size: 0.84rem;
+  font-weight: 760;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7e3;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.admin-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.admin-table thead {
+  background: #f7f8f6;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 13px 14px;
+  border-bottom: 1px solid #eceee9;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-table th {
+  color: #5f646b;
+  font-size: 0.78rem;
+  font-weight: 780;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.admin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-table tbody tr:hover {
+  background: #fafbf9;
+}
+
+.admin-table-row-past {
+  background: #fcfcfc;
+}
+
+.admin-table-row-past td {
+  color: #767b82;
+}
+
+.admin-table td strong {
+  display: block;
+  color: #111113;
+  font-size: 0.94rem;
+}
+
+.admin-table td span {
+  display: block;
+  margin-top: 2px;
+  color: #8a8f96;
+  font-size: 0.76rem;
+}
+
+.admin-table-row-past td strong {
+  color: #686d74;
+}
+
+.admin-delete-button {
+  min-width: 68px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.84rem;
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.admin-pagination span {
+  min-width: 72px;
+  color: #525860;
+  font-size: 0.88rem;
+  font-weight: 760;
+  text-align: center;
+}
+
+.admin-pagination .secondary-button {
+  min-width: 84px;
+}
+
+.admin-list-empty {
+  min-height: 180px;
+  padding: 24px 16px;
+}
+
+.admin-list-empty strong {
+  color: #454a51;
+  font-size: 0.96rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .stats-panel {
@@ -827,6 +1186,85 @@ button:not(:disabled) {
     grid-template-columns: 1fr;
   }
 
+  .admin-calendar-panel {
+    padding: 14px 12px;
+  }
+
+  .admin-list-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-list-header {
+    display: grid;
+    gap: 12px;
+  }
+
+  .admin-list-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .admin-filter-tabs {
+    justify-content: flex-start;
+  }
+
+  .admin-table {
+    min-width: 0;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table,
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table tr {
+    padding: 14px;
+    border-bottom: 1px solid #eceee9;
+  }
+
+  .admin-table tr:last-child {
+    border-bottom: 0;
+  }
+
+  .admin-table td {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    gap: 8px;
+    padding: 0 0 10px;
+    border-bottom: 0;
+  }
+
+  .admin-table td:last-child {
+    padding-bottom: 0;
+  }
+
+  .admin-table td::before {
+    content: attr(data-label);
+    color: #72777e;
+    font-size: 0.78rem;
+    font-weight: 760;
+  }
+
+  .admin-table td[data-label="관리"] {
+    grid-template-columns: 1fr;
+    padding-top: 4px;
+  }
+
+  .admin-table td[data-label="관리"]::before {
+    display: none;
+  }
+
+  .admin-delete-button {
+    width: 100%;
+  }
+
   .reservation-row {
     grid-template-columns: 1fr;
   }
@@ -844,8 +1282,10 @@ button:not(:disabled) {
   }
 
   .calendar-panel,
+  .admin-calendar-panel,
   .list-panel,
   .admin-card,
+  .admin-list-panel,
   .request-modal {
     padding: 14px 10px;
   }
@@ -922,6 +1362,14 @@ button:not(:disabled) {
   .period-form {
     grid-template-columns: 1fr;
     gap: 5px;
+  }
+
+  .admin-pagination {
+    flex-direction: column;
+  }
+
+  .admin-pagination .secondary-button {
+    width: 100%;
   }
 
   .secondary-button {

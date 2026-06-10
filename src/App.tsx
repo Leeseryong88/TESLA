@@ -27,7 +27,6 @@ import {
 import {
   formatDateId,
   formatReservationWindow,
-  formatTimestamp,
   getMonthCells,
   getMonthTitle,
   getTodayId,
@@ -53,6 +52,9 @@ type ReservationForm = {
 const vehicleImage = "/model-x.png";
 const EMPLOYEE_ID_PREFIX = "monster";
 const EMPLOYEE_ID_SUFFIX_MAX_LENGTH = 23;
+const ADMIN_PAGE_SIZE = 10;
+
+type AdminReservationFilter = "all" | "upcoming" | "past";
 
 const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -543,77 +545,455 @@ function ReservationPage() {
   );
 }
 
-function ReservationList({
-  title,
+function AdminReservationCalendar({
   reservations,
-  loading,
-  emptyText,
-  onDelete,
-  deletingId,
+  period,
+  selectedDate,
+  onSelectDate,
 }: {
-  title: string;
   reservations: Reservation[];
-  loading: boolean;
-  emptyText: string;
-  onDelete?: (date: string) => void;
-  deletingId?: string;
+  period: ReservationPeriod | null;
+  selectedDate: string;
+  onSelectDate: (dateId: string) => void;
 }) {
+  const [month, setMonth] = useState(() => new Date());
+  const todayId = getTodayId();
+  const monthCells = getMonthCells(month);
+
+  const reservationByDate = useMemo(() => {
+    const map = new Map<string, Reservation>();
+
+    for (const reservation of reservations) {
+      map.set(reservation.date, reservation);
+    }
+
+    return map;
+  }, [reservations]);
+
   return (
-    <section className="panel list-panel" aria-label={title}>
-      <div className="panel-heading">
+    <section className="panel admin-calendar-panel" aria-label="예약 현황 달력">
+      <div className="panel-heading admin-calendar-heading">
         <div>
-          <p className="section-kicker">LIVE</p>
-          <h2>{title}</h2>
+          <p className="section-kicker">CALENDAR</p>
+          <h2>예약 현황</h2>
         </div>
-        <span className="count-badge">{reservations.length}</span>
+        <div className="month-controls admin-month-controls">
+          <button
+            aria-label="이전 달"
+            className="icon-button"
+            onClick={() => setMonth((current) => shiftMonth(current, -1))}
+            type="button"
+          >
+            ‹
+          </button>
+          <strong>{getMonthTitle(month)}</strong>
+          <button
+            aria-label="다음 달"
+            className="icon-button"
+            onClick={() => setMonth((current) => shiftMonth(current, 1))}
+            type="button"
+          >
+            ›
+          </button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="empty-state">불러오는 중입니다.</div>
-      ) : reservations.length === 0 ? (
-        <div className="empty-state">{emptyText}</div>
-      ) : (
-        <div className="reservation-list">
-          {reservations.map((reservation) => (
-            <article className="reservation-row" key={reservation.id}>
-              <div className="date-block">
-                <strong>{formatDateId(reservation.date)}</strong>
-                <span>{formatReservationWindow(reservation.date)}</span>
-              </div>
-              <div className="person-block">
-                <strong>{reservation.name}</strong>
-                <span>
-                  {reservation.department} · {reservation.employeeId}
-                </span>
-              </div>
-              {onDelete ? (
-                <button
-                  className="danger-button"
-                  disabled={deletingId === reservation.date}
-                  onClick={() => onDelete(reservation.date)}
-                  type="button"
-                >
-                  {deletingId === reservation.date ? "삭제 중" : "삭제"}
-                </button>
+      <div className="calendar-weekdays admin-calendar-weekdays">
+        {weekdays.map((weekday) => (
+          <span key={weekday}>{weekday}</span>
+        ))}
+      </div>
+
+      <div className="calendar-grid admin-calendar-grid">
+        {monthCells.map((cell) => {
+          const groupRole = getWeekendReservationGroupRole(cell.dateId);
+          const isWeekendGroup = groupRole !== null;
+          const linkedFridayDateId = getWeekendReservationFridayDateId(cell.dateId) ?? cell.dateId;
+          const reservation = reservationByDate.get(linkedFridayDateId);
+          const isReserved = Boolean(reservation);
+          const isPast = linkedFridayDateId < todayId;
+          const isOutsidePeriod =
+            Boolean(period) && !isDateWithinPeriod(linkedFridayDateId, period);
+          const isSelected = selectedDate
+            ? isWeekendGroup
+              ? selectedDate === linkedFridayDateId
+              : selectedDate === cell.dateId
+            : false;
+          const statusLabel = isPast
+            ? "종료"
+            : isOutsidePeriod
+              ? "기간외"
+              : isReserved
+                ? "예약"
+                : isWeekendGroup
+                  ? groupRole === "start"
+                    ? "금"
+                    : groupRole === "middle"
+                      ? "토"
+                      : "일"
+                  : "가능";
+
+          return (
+            <button
+              aria-label={
+                isReserved && reservation
+                  ? `${cell.dateId} ${reservation.name} 예약됨`
+                  : `${cell.dateId} ${statusLabel}`
+              }
+              aria-pressed={isSelected}
+              className={[
+                "calendar-day",
+                "admin-calendar-day",
+                !cell.isCurrentMonth ? "calendar-day-muted" : "",
+                isReserved ? "calendar-day-reserved" : "",
+                isPast && cell.isCurrentMonth ? "calendar-day-past" : "",
+                isOutsidePeriod && cell.isCurrentMonth ? "calendar-day-outside" : "",
+                groupRole === "start" && cell.isCurrentMonth
+                  ? "calendar-day-weekend-group-start"
+                  : "",
+                groupRole === "middle" && cell.isCurrentMonth
+                  ? "calendar-day-weekend-group-middle"
+                  : "",
+                groupRole === "end" && cell.isCurrentMonth
+                  ? "calendar-day-weekend-group-end"
+                  : "",
+                isSelected ? "calendar-day-selected" : "",
+              ].join(" ")}
+              key={cell.dateId}
+              onClick={() => onSelectDate(linkedFridayDateId)}
+              title={
+                isReserved && reservation
+                  ? `${reservation.department} · ${reservation.name}`
+                  : undefined
+              }
+              type="button"
+            >
+              <span>{cell.day}</span>
+              {cell.isCurrentMonth ? (
+                isReserved && reservation ? (
+                  <small className="admin-calendar-reservation-label">{reservation.name}</small>
+                ) : (
+                  <small>{statusLabel}</small>
+                )
               ) : null}
-            </article>
-          ))}
-        </div>
-      )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="calendar-legend admin-calendar-legend" aria-label="예약 상태">
+        <span>
+          <i className="legend-dot legend-open" /> 가능
+        </span>
+        <span>
+          <i className="legend-dot legend-reserved" /> 예약
+        </span>
+        <span>
+          <i className="legend-dot legend-weekend" /> 금토일
+        </span>
+        {period ? (
+          <span>
+            <i className="legend-dot legend-outside" /> 기간 외
+          </span>
+        ) : null}
+      </div>
     </section>
   );
 }
 
-function ReservationPeriodSettings({
+function AdminReservationList({
+  reservations,
+  loading,
+  onDelete,
+  deletingId,
+  period,
+  periodLoading,
+  periodSaving,
+  onSavePeriod,
+  selectedDate,
+  onClearSelectedDate,
+}: {
+  reservations: Reservation[];
+  loading: boolean;
+  onDelete: (date: string) => void;
+  deletingId: string;
+  period: ReservationPeriod | null;
+  periodLoading: boolean;
+  periodSaving: boolean;
+  onSavePeriod: (startDate: string, endDate: string) => Promise<void>;
+  selectedDate: string;
+  onClearSelectedDate: () => void;
+}) {
+  const todayId = getTodayId();
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<AdminReservationFilter>("all");
+  const [page, setPage] = useState(1);
+  const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
+
+  const filteredReservations = useMemo(() => {
+    let items = reservations;
+
+    if (selectedDate) {
+      items = items.filter((item) => item.date === selectedDate);
+    } else if (filter === "upcoming") {
+      items = items.filter((item) => item.date >= todayId);
+    } else if (filter === "past") {
+      items = items.filter((item) => item.date < todayId);
+    }
+
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return items;
+    }
+
+    return items.filter(
+      (item) =>
+        item.name.toLowerCase().includes(query) ||
+        item.department.toLowerCase().includes(query) ||
+        item.employeeId.toLowerCase().includes(query) ||
+        item.date.includes(query) ||
+        formatDateId(item.date).toLowerCase().includes(query),
+    );
+  }, [filter, reservations, search, selectedDate, todayId]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredReservations.length / ADMIN_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * ADMIN_PAGE_SIZE;
+  const pageEnd = Math.min(pageStart + ADMIN_PAGE_SIZE, filteredReservations.length);
+  const paginatedReservations = filteredReservations.slice(pageStart, pageEnd);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, filter, selectedDate]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const filterCounts = useMemo(
+    () => ({
+      all: reservations.length,
+      upcoming: reservations.filter((item) => item.date >= todayId).length,
+      past: reservations.filter((item) => item.date < todayId).length,
+    }),
+    [reservations, todayId],
+  );
+
+  return (
+    <section className="panel admin-list-panel" aria-label="전체 예약 목록">
+      <div className="admin-list-header">
+        <div>
+          <p className="section-kicker">RESERVATIONS</p>
+          <h2>전체 예약 목록</h2>
+        </div>
+        <div className="admin-list-header-actions">
+          <button
+            className="secondary-button admin-period-button"
+            onClick={() => setIsPeriodModalOpen(true)}
+            type="button"
+          >
+            기간 설정
+          </button>
+          <span className="count-badge">{filteredReservations.length}</span>
+        </div>
+      </div>
+
+      <div
+        className={`admin-period-bar${period || periodLoading ? "" : " admin-period-bar-unset"}`}
+        aria-live="polite"
+      >
+        <div className="admin-period-status">
+          <p className="section-kicker">예약 가능 기간</p>
+          {periodLoading ? (
+            <span>기간 정보를 불러오는 중입니다.</span>
+          ) : period ? (
+            <>
+              <strong>{formatReservationPeriod(period)}</strong>
+              <span>설정된 기간의 날짜만 공개 페이지에서 예약할 수 있습니다.</span>
+            </>
+          ) : (
+            <>
+              <strong>기간 미설정</strong>
+              <span>기간 설정 버튼을 눌러 예약 가능 날짜를 지정하세요.</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {selectedDate ? (
+        <div className="admin-date-filter">
+          <span>
+            달력 선택: <strong>{formatDateId(selectedDate)}</strong>
+          </span>
+          <button className="secondary-button admin-date-filter-clear" onClick={onClearSelectedDate} type="button">
+            선택 해제
+          </button>
+        </div>
+      ) : null}
+
+        <div className="admin-list-toolbar">
+        <label className="admin-search-field">
+          <span className="sr-only">예약 검색</span>
+          <input
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="이름, 부서, 사번, 날짜 검색"
+            type="search"
+            value={search}
+          />
+        </label>
+        <div
+          className={`admin-filter-tabs${selectedDate ? " admin-filter-tabs-disabled" : ""}`}
+          role="tablist"
+          aria-label="예약 필터"
+        >
+          {(
+            [
+              ["all", "전체"],
+              ["upcoming", "예정"],
+              ["past", "지난 예약"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              aria-selected={filter === value}
+              className={filter === value ? "active" : undefined}
+              disabled={Boolean(selectedDate)}
+              key={value}
+              onClick={() => setFilter(value)}
+              role="tab"
+              type="button"
+            >
+              {label}
+              <span>{filterCounts[value]}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="empty-state admin-list-empty">불러오는 중입니다.</div>
+      ) : filteredReservations.length === 0 ? (
+        <div className="empty-state admin-list-empty">
+          <strong>
+            {reservations.length === 0
+              ? "등록된 예약이 없습니다."
+              : selectedDate
+                ? `${formatDateId(selectedDate)} 예약 없음`
+                : "검색 결과가 없습니다."}
+          </strong>
+          <span>
+            {reservations.length === 0
+              ? "공개 페이지에서 예약이 등록되면 여기에 표시됩니다."
+              : selectedDate
+                ? "선택한 날짜에 등록된 예약이 없습니다."
+                : "검색어나 필터 조건을 변경해 보세요."}
+          </span>
+        </div>
+      ) : (
+        <>
+          <p className="admin-list-summary">
+            전체 {filteredReservations.length}건 중 {pageStart + 1}–{pageEnd}건 표시
+          </p>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th scope="col">날짜</th>
+                  <th scope="col">이용 시간</th>
+                  <th scope="col">이름</th>
+                  <th scope="col">부서</th>
+                  <th scope="col">사번</th>
+                  <th scope="col">
+                    <span className="sr-only">관리</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedReservations.map((reservation) => {
+                  const isPast = reservation.date < todayId;
+
+                  return (
+                    <tr className={isPast ? "admin-table-row-past" : undefined} key={reservation.id}>
+                      <td data-label="날짜">
+                        <strong>{formatDateId(reservation.date)}</strong>
+                        <span>{reservation.date}</span>
+                      </td>
+                      <td data-label="이용 시간">{formatReservationWindow(reservation.date)}</td>
+                      <td data-label="이름">{reservation.name}</td>
+                      <td data-label="부서">{reservation.department}</td>
+                      <td data-label="사번">{reservation.employeeId}</td>
+                      <td data-label="관리">
+                        <button
+                          className="danger-button admin-delete-button"
+                          disabled={deletingId === reservation.date}
+                          onClick={() => onDelete(reservation.date)}
+                          type="button"
+                        >
+                          {deletingId === reservation.date ? "삭제 중" : "삭제"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {filteredReservations.length > ADMIN_PAGE_SIZE ? (
+            <div className="admin-pagination">
+              <button
+                className="secondary-button"
+                disabled={currentPage <= 1}
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+                type="button"
+              >
+                이전
+              </button>
+              <span>
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                className="secondary-button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+                type="button"
+              >
+                다음
+              </button>
+            </div>
+          ) : null}
+        </>
+      )}
+
+      {isPeriodModalOpen ? (
+        <ReservationPeriodModal
+          loading={periodLoading}
+          onClose={() => setIsPeriodModalOpen(false)}
+          onSave={async (startDate, endDate) => {
+            await onSavePeriod(startDate, endDate);
+            setIsPeriodModalOpen(false);
+          }}
+          period={period}
+          saving={periodSaving}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function ReservationPeriodModal({
   period,
   loading,
-  onSave,
   saving,
+  onSave,
+  onClose,
 }: {
   period: ReservationPeriod | null;
   loading: boolean;
-  onSave: (startDate: string, endDate: string) => Promise<void>;
   saving: boolean;
+  onSave: (startDate: string, endDate: string) => Promise<void>;
+  onClose: () => void;
 }) {
   const [startDate, setStartDate] = useState(period?.startDate ?? "");
   const [endDate, setEndDate] = useState(period?.endDate ?? "");
@@ -631,49 +1011,74 @@ function ReservationPeriodSettings({
   };
 
   return (
-    <section className="panel admin-card admin-settings-panel" aria-label="예약 가능 기간 설정">
-      <div className="panel-heading">
-        <div>
-          <p className="section-kicker">PERIOD</p>
-          <h2>예약 가능 기간</h2>
+    <div className="modal-backdrop" onClick={onClose} role="presentation">
+      <section
+        aria-labelledby="period-modal-title"
+        aria-modal="true"
+        className="request-modal admin-period-modal"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <div className="modal-heading">
+          <div>
+            <p className="section-kicker">PERIOD</p>
+            <h2 id="period-modal-title">예약 가능 기간 설정</h2>
+          </div>
+          <button
+            aria-label="기간 설정 닫기"
+            className="icon-button modal-close"
+            onClick={onClose}
+            type="button"
+          >
+            ×
+          </button>
         </div>
-      </div>
 
-      <p className="settings-copy">
-        설정한 기간의 날짜만 예약할 수 있습니다. 기간 외 날짜는 공개 예약 페이지에서 선택할 수
-        없습니다.
-      </p>
-
-      {period ? (
-        <p className="settings-current">
-          현재 적용 중: <strong>{formatReservationPeriod(period)}</strong>
+        <p className="settings-copy">
+          설정한 기간의 날짜만 예약할 수 있습니다. 기간 외 날짜는 공개 예약 페이지에서 선택할 수
+          없습니다.
         </p>
-      ) : (
-        <p className="settings-current">현재 적용 중인 기간이 없습니다. 저장하면 즉시 적용됩니다.</p>
-      )}
 
-      <form className="reservation-form period-form" onSubmit={onSubmit}>
-        <label>
-          시작일
-          <input
-            onChange={(event) => setStartDate(event.target.value)}
-            type="date"
-            value={startDate}
-          />
-        </label>
-        <label>
-          종료일
-          <input
-            onChange={(event) => setEndDate(event.target.value)}
-            type="date"
-            value={endDate}
-          />
-        </label>
-        <button className="primary-button" disabled={!canSave} type="submit">
-          {saving ? "저장 중" : "기간 저장"}
-        </button>
-      </form>
-    </section>
+        {period ? (
+          <div className="modal-date-summary admin-period-summary">
+            <span>현재 적용 중</span>
+            <strong>{formatReservationPeriod(period)}</strong>
+          </div>
+        ) : (
+          <div className="modal-date-summary admin-period-summary admin-period-summary-empty">
+            <span>현재 적용 중인 기간 없음</span>
+            <strong>저장하면 즉시 적용됩니다.</strong>
+          </div>
+        )}
+
+        <form className="reservation-form period-form admin-period-form" onSubmit={onSubmit}>
+          <label>
+            시작일
+            <input
+              onChange={(event) => setStartDate(event.target.value)}
+              type="date"
+              value={startDate}
+            />
+          </label>
+          <label>
+            종료일
+            <input
+              onChange={(event) => setEndDate(event.target.value)}
+              type="date"
+              value={endDate}
+            />
+          </label>
+          <div className="admin-period-modal-actions">
+            <button className="secondary-button" onClick={onClose} type="button">
+              취소
+            </button>
+            <button className="primary-button" disabled={!canSave} type="submit">
+              {saving ? "저장 중" : "기간 저장"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
   );
 }
 
@@ -691,6 +1096,7 @@ function AdminPage() {
   const [periodLoading, setPeriodLoading] = useState(true);
   const [periodSaving, setPeriodSaving] = useState(false);
   const [deletingId, setDeletingId] = useState("");
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState("");
 
   useEffect(() => {
     return onAuthStateChanged(auth, (nextUser) => {
@@ -768,6 +1174,7 @@ function AdminPage() {
         title: "예약 기간 저장에 실패했습니다.",
         description: error instanceof Error ? error.message : "관리자 권한을 확인하세요.",
       });
+      throw error;
     } finally {
       setPeriodSaving(false);
     }
@@ -878,29 +1285,25 @@ function AdminPage() {
         </section>
       ) : (
         <main className="admin-layout">
-          <ReservationPeriodSettings
-            loading={periodLoading}
-            onSave={saveReservationPeriod}
+          <AdminReservationCalendar
+            onSelectDate={(dateId) =>
+              setSelectedCalendarDate((current) => (current === dateId ? "" : dateId))
+            }
             period={reservationPeriod}
-            saving={periodSaving}
-          />
-          <section className="panel stats-panel">
-            <p className="section-kicker">TOTAL</p>
-            <strong>{reservations.length}</strong>
-            <span>등록된 예약</span>
-          </section>
-          <section className="panel stats-panel">
-            <p className="section-kicker">NEXT</p>
-            <strong>{reservations[0] ? formatDateId(reservations[0].date) : "-"}</strong>
-            <span>{reservations[0] ? formatTimestamp(reservations[0].startAt) : "예정 없음"}</span>
-          </section>
-          <ReservationList
-            deletingId={deletingId}
-            emptyText="등록된 예약이 없습니다."
-            loading={reservationsLoading}
-            onDelete={removeReservation}
             reservations={reservations}
-            title="전체 예약 목록"
+            selectedDate={selectedCalendarDate}
+          />
+          <AdminReservationList
+            deletingId={deletingId}
+            loading={reservationsLoading}
+            onClearSelectedDate={() => setSelectedCalendarDate("")}
+            onDelete={removeReservation}
+            onSavePeriod={saveReservationPeriod}
+            period={reservationPeriod}
+            periodLoading={periodLoading}
+            periodSaving={periodSaving}
+            reservations={reservations}
+            selectedDate={selectedCalendarDate}
           />
         </main>
       )}
