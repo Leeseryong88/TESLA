@@ -517,7 +517,7 @@ function ReservationPage() {
                   autoComplete="organization-title"
                   maxLength={60}
                   onChange={(event) => updateForm("department", event.target.value)}
-                  placeholder="예: 자산파트 자산운영팀"
+                  placeholder="예: 구조부문 자산파트"
                   value={form.department}
                 />
               </label>
