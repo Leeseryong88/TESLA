@@ -1,0 +1,101 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.admin == true ||
+        request.auth.uid in [
+          "N6bDIczmACUUvriNZ4mOhqosgPt1"
+        ]
+      );
+    }
+
+    function isNonEmptyString(value, maxLength) {
+      return value is string &&
+        value.size() > 0 &&
+        value.size() <= maxLength;
+    }
+
+    function reservationPeriod() {
+      return exists(/databases/$(database)/documents/settings/reservation)
+        ? get(/databases/$(database)/documents/settings/reservation).data
+        : null;
+    }
+
+    function isWithinReservationPeriod(reservationId) {
+      let period = reservationPeriod();
+      return period == null ||
+        (
+          reservationId >= period.startDate &&
+          reservationId <= period.endDate
+        );
+    }
+
+    function hasReservationPeriodShape() {
+      return request.resource.data.keys().hasOnly([
+          "startDate",
+          "endDate",
+          "updatedAt"
+        ]) &&
+        request.resource.data.keys().hasAll([
+          "startDate",
+          "endDate",
+          "updatedAt"
+        ]) &&
+        request.resource.data.startDate.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+        request.resource.data.endDate.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+        request.resource.data.startDate <= request.resource.data.endDate &&
+        request.resource.data.updatedAt == request.time;
+    }
+
+    function hasReservationShape(reservationId) {
+      return request.resource.data.keys().hasOnly([
+          "date",
+          "startAt",
+          "endAt",
+          "employeeId",
+          "department",
+          "name",
+          "createdAt"
+        ]) &&
+        request.resource.data.keys().hasAll([
+          "date",
+          "startAt",
+          "endAt",
+          "employeeId",
+          "department",
+          "name",
+          "createdAt"
+        ]) &&
+        reservationId.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+        request.resource.data.date == reservationId &&
+        request.resource.data.startAt is timestamp &&
+        request.resource.data.endAt is timestamp &&
+        request.resource.data.endAt > request.resource.data.startAt &&
+        request.resource.data.createdAt == request.time &&
+        isNonEmptyString(request.resource.data.employeeId, 30) &&
+        isNonEmptyString(request.resource.data.department, 60) &&
+        isNonEmptyString(request.resource.data.name, 40);
+    }
+
+    match /reservations/{reservationId} {
+      allow read: if true;
+      allow create: if !exists(/databases/$(database)/documents/reservations/$(reservationId)) &&
+        isWithinReservationPeriod(reservationId) &&
+        hasReservationShape(reservationId);
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    match /settings/reservation {
+      allow read: if true;
+      allow create, update: if isAdmin() && hasReservationPeriodShape();
+      allow delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
