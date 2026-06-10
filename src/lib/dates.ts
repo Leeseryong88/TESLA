@@ -18,6 +18,13 @@ const shortDateFormatter = new Intl.DateTimeFormat("ko-KR", {
   weekday: "short",
 });
 
+const compactDateFormatter = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: KST_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 const dateTimeFormatter = new Intl.DateTimeFormat("ko-KR", {
   timeZone: KST_TIME_ZONE,
   month: "2-digit",
@@ -137,6 +144,36 @@ export function getReservationWindow(dateId: string) {
 
 export function formatDateId(dateId: string) {
   return shortDateFormatter.format(new Date(`${dateId}T12:00:00${KST_OFFSET}`));
+}
+
+export function formatCompactDateId(dateId: string) {
+  return compactDateFormatter.format(new Date(`${dateId}T12:00:00${KST_OFFSET}`));
+}
+
+function toDottedDateParts(dateId: string) {
+  const [year, month, day] = dateId.split("-");
+
+  return {
+    year,
+    month,
+    day,
+    full: `${year}.${month}.${day}`,
+  };
+}
+
+export function formatReservationUsagePeriod(dateId: string) {
+  const durationDays = isWeekendReservationStartDate(dateId) ? 3 : 1;
+  const endDateId = shiftDateId(dateId, durationDays === 1 ? 1 : durationDays - 1);
+  const start = toDottedDateParts(dateId);
+  const end = toDottedDateParts(endDateId);
+
+  if (dateId === endDateId) {
+    return start.full;
+  }
+
+  const endLabel = start.year === end.year ? `${end.month}.${end.day}` : end.full;
+
+  return `${start.full}~${endLabel}`;
 }
 
 export function formatReservationWindow(dateId: string) {

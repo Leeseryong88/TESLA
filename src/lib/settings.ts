@@ -6,7 +6,7 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { formatDateId } from "./dates";
+import { formatCompactDateId, formatDateId } from "./dates";
 
 export type ReservationPeriod = {
   startDate: string;
@@ -81,4 +81,8 @@ export function isDateWithinPeriod(dateId: string, period: ReservationPeriod | n
 
 export function formatReservationPeriod(period: ReservationPeriod) {
   return `${formatDateId(period.startDate)} ~ ${formatDateId(period.endDate)}`;
+}
+
+export function formatCompactReservationPeriod(period: ReservationPeriod) {
+  return `${formatCompactDateId(period.startDate)} ~ ${formatCompactDateId(period.endDate)}`;
 }

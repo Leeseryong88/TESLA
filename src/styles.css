@@ -875,51 +875,43 @@ button:not(:disabled) {
 .admin-list-header-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 10px;
+}
+
+.admin-period-inline {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 12px;
+  border: 1px solid #e3e7e2;
+  border-radius: 8px;
+  background: #f8faf8;
+  text-align: right;
+}
+
+.admin-period-inline-label {
+  color: #72777e;
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
+.admin-period-inline-value {
+  color: #111113;
+  font-size: 0.84rem;
+  font-weight: 780;
+  white-space: nowrap;
+}
+
+.admin-period-inline-unset {
+  color: #9a5d19;
 }
 
 .admin-period-button {
   min-height: 38px;
   padding: 0 14px;
   white-space: nowrap;
-}
-
-.admin-period-bar {
-  margin-bottom: 14px;
-  padding: 14px 16px;
-  border: 1px solid #dce5df;
-  border-radius: 8px;
-  background: #f7faf8;
-}
-
-.admin-period-bar-unset {
-  border-color: #eadfce;
-  background: #fffaf4;
-}
-
-.admin-period-status {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.admin-period-status .section-kicker {
-  margin-bottom: 2px;
-}
-
-.admin-period-status strong {
-  color: #111113;
-  font-size: 0.98rem;
-}
-
-.admin-period-status span {
-  color: #626770;
-  font-size: 0.84rem;
-  line-height: 1.45;
-}
-
-.admin-period-bar-unset .admin-period-status strong {
-  color: #9a5d19;
 }
 
 .admin-list-toolbar {
@@ -1011,7 +1003,7 @@ button:not(:disabled) {
 
 .admin-table {
   width: 100%;
-  min-width: 760px;
+  min-width: 560px;
   border-collapse: collapse;
 }
 
@@ -1021,10 +1013,12 @@ button:not(:disabled) {
 
 .admin-table th,
 .admin-table td {
-  padding: 13px 14px;
+  padding: 11px 12px;
   border-bottom: 1px solid #eceee9;
   text-align: left;
   vertical-align: middle;
+  white-space: nowrap;
+  font-size: 0.88rem;
 }
 
 .admin-table th {
@@ -1032,7 +1026,6 @@ button:not(:disabled) {
   font-size: 0.78rem;
   font-weight: 780;
   letter-spacing: 0.02em;
-  white-space: nowrap;
 }
 
 .admin-table tbody tr:last-child td {
@@ -1043,36 +1036,20 @@ button:not(:disabled) {
   background: #fafbf9;
 }
 
-.admin-table-row-past {
-  background: #fcfcfc;
-}
-
 .admin-table-row-past td {
   color: #767b82;
 }
 
-.admin-table td strong {
-  display: block;
-  color: #111113;
-  font-size: 0.94rem;
-}
-
-.admin-table td span {
-  display: block;
-  margin-top: 2px;
-  color: #8a8f96;
-  font-size: 0.76rem;
-}
-
-.admin-table-row-past td strong {
-  color: #686d74;
+.admin-table-actions {
+  width: 1%;
+  text-align: right;
 }
 
 .admin-delete-button {
-  min-width: 68px;
-  min-height: 36px;
-  padding: 0 12px;
-  font-size: 0.84rem;
+  min-width: 60px;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 0.82rem;
 }
 
 .admin-pagination {
@@ -1204,65 +1181,17 @@ button:not(:disabled) {
     justify-content: space-between;
   }
 
+  .admin-period-inline {
+    flex: 1 1 auto;
+    text-align: left;
+  }
+
   .admin-filter-tabs {
     justify-content: flex-start;
   }
 
-  .admin-table {
-    min-width: 0;
-  }
-
-  .admin-table thead {
-    display: none;
-  }
-
-  .admin-table,
-  .admin-table tbody,
-  .admin-table tr,
-  .admin-table td {
-    display: block;
-    width: 100%;
-  }
-
-  .admin-table tr {
-    padding: 14px;
-    border-bottom: 1px solid #eceee9;
-  }
-
-  .admin-table tr:last-child {
-    border-bottom: 0;
-  }
-
-  .admin-table td {
-    display: grid;
-    grid-template-columns: 88px 1fr;
-    gap: 8px;
-    padding: 0 0 10px;
-    border-bottom: 0;
-  }
-
-  .admin-table td:last-child {
-    padding-bottom: 0;
-  }
-
-  .admin-table td::before {
-    content: attr(data-label);
-    color: #72777e;
-    font-size: 0.78rem;
-    font-weight: 760;
-  }
-
-  .admin-table td[data-label="관리"] {
-    grid-template-columns: 1fr;
-    padding-top: 4px;
-  }
-
-  .admin-table td[data-label="관리"]::before {
-    display: none;
-  }
-
   .admin-delete-button {
-    width: 100%;
+    width: auto;
   }
 
   .reservation-row {

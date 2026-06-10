@@ -18,6 +18,7 @@ import {
 } from "./lib/reservations";
 import {
   formatReservationPeriod,
+  formatCompactReservationPeriod,
   isDateWithinPeriod,
   ReservationPeriodError,
   subscribeReservationPeriod,
@@ -26,6 +27,7 @@ import {
 } from "./lib/settings";
 import {
   formatDateId,
+  formatReservationUsagePeriod,
   formatReservationWindow,
   getMonthCells,
   getMonthTitle,
@@ -44,7 +46,7 @@ type Toast = {
 };
 
 type ReservationForm = {
-  employeeIdSuffix: string;
+  employeeId: string;
   department: string;
   name: string;
 };
@@ -126,7 +128,7 @@ function ReservationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [form, setForm] = useState<ReservationForm>({
-    employeeIdSuffix: "",
+    employeeId: "",
     department: "",
     name: "",
   });
@@ -212,12 +214,15 @@ function ReservationPage() {
   const isSelectedDateAllowed = selectedDate
     ? isDateWithinPeriod(selectedDate, reservationPeriod)
     : false;
+  const hasEmployeeIdSuffix =
+    form.employeeId.startsWith(EMPLOYEE_ID_PREFIX) &&
+    form.employeeId.trim().length > EMPLOYEE_ID_PREFIX.length;
   const canSubmit = Boolean(
     selectedDate &&
       isReservableDateId(selectedDate) &&
       isSelectedDateAllowed &&
       !isSelectedDateReserved &&
-      form.employeeIdSuffix.trim() &&
+      hasEmployeeIdSuffix &&
       form.department.trim() &&
       form.name.trim() &&
       !submitting &&
@@ -228,6 +233,96 @@ function ReservationPage() {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
+  const updateEmployeeId = (value: string) => {
+    if (!value) {
+      updateForm("employeeId", "");
+      return;
+    }
+
+    let suffix = "";
+
+    if (value.startsWith(EMPLOYEE_ID_PREFIX)) {
+      suffix = value.slice(EMPLOYEE_ID_PREFIX.length);
+    } else if (value.length < EMPLOYEE_ID_PREFIX.length && EMPLOYEE_ID_PREFIX.startsWith(value)) {
+      suffix = "";
+    } else {
+      suffix = value.slice(EMPLOYEE_ID_PREFIX.length);
+    }
+
+    updateForm(
+      "employeeId",
+      EMPLOYEE_ID_PREFIX + suffix.slice(0, EMPLOYEE_ID_SUFFIX_MAX_LENGTH),
+    );
+  };
+
+  const clampEmployeeIdSelection = (input: HTMLInputElement) => {
+    if (!input.value.startsWith(EMPLOYEE_ID_PREFIX)) {
+      return;
+    }
+
+    const prefixLength = EMPLOYEE_ID_PREFIX.length;
+    const selectionStart = input.selectionStart ?? 0;
+    const selectionEnd = input.selectionEnd ?? 0;
+
+    if (selectionStart < prefixLength || selectionEnd < prefixLength) {
+      input.setSelectionRange(
+        Math.max(selectionStart, prefixLength),
+        Math.max(selectionEnd, prefixLength),
+      );
+    }
+  };
+
+  const handleEmployeeIdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    updateEmployeeId(event.target.value);
+    requestAnimationFrame(() => {
+      clampEmployeeIdSelection(event.target);
+    });
+  };
+
+  const handleEmployeeIdKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!form.employeeId.startsWith(EMPLOYEE_ID_PREFIX)) {
+      return;
+    }
+
+    const input = event.currentTarget;
+    const prefixLength = EMPLOYEE_ID_PREFIX.length;
+    const selectionStart = input.selectionStart ?? 0;
+    const selectionEnd = input.selectionEnd ?? 0;
+
+    if (event.key !== "Backspace" && event.key !== "Delete") {
+      return;
+    }
+
+    if (selectionStart <= prefixLength && selectionEnd <= prefixLength) {
+      event.preventDefault();
+      input.setSelectionRange(prefixLength, prefixLength);
+    }
+  };
+
+  const handleEmployeeIdFocus = (event: React.FocusEvent<HTMLInputElement>) => {
+    if (form.employeeId) {
+      requestAnimationFrame(() => {
+        clampEmployeeIdSelection(event.target);
+      });
+      return;
+    }
+
+    updateForm("employeeId", EMPLOYEE_ID_PREFIX);
+    requestAnimationFrame(() => {
+      event.target.setSelectionRange(EMPLOYEE_ID_PREFIX.length, EMPLOYEE_ID_PREFIX.length);
+    });
+  };
+
+  const handleEmployeeIdSelect = (event: React.SyntheticEvent<HTMLInputElement>) => {
+    clampEmployeeIdSelection(event.currentTarget);
+  };
+
+  const handleEmployeeIdBlur = () => {
+    if (!form.employeeId || form.employeeId.length <= EMPLOYEE_ID_PREFIX.length) {
+      updateForm("employeeId", "");
+    }
+  };
+
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -236,7 +331,7 @@ function ReservationPage() {
       return;
     }
 
-    if (!form.employeeIdSuffix.trim() || !form.department.trim() || !form.name.trim()) {
+    if (!hasEmployeeIdSuffix || !form.department.trim() || !form.name.trim()) {
       pushToast({ tone: "error", title: "사번, 부서, 이름을 모두 입력하세요." });
       return;
     }
@@ -269,7 +364,7 @@ function ReservationPage() {
     try {
       await createReservation({
         date: selectedDate,
-        employeeId: `${EMPLOYEE_ID_PREFIX}${form.employeeIdSuffix.trim()}`,
+        employeeId: form.employeeId.trim(),
         department: form.department,
         name: form.name,
       });
@@ -279,7 +374,7 @@ function ReservationPage() {
         title: "예약이 완료됐습니다.",
         description: `${formatDateId(selectedDate)} ${formatReservationWindow(selectedDate)}`,
       });
-      setForm({ employeeIdSuffix: "", department: "", name: "" });
+      setForm({ employeeId: "", department: "", name: "" });
       setSelectedDate("");
       setIsRequestModalOpen(false);
     } catch (error) {
@@ -501,17 +596,19 @@ function ReservationPage() {
             <form className="reservation-form" onSubmit={onSubmit}>
               <label>
                 사번
-                <div className="employee-id-field">
-                  <span className="employee-id-prefix">{EMPLOYEE_ID_PREFIX}</span>
-                  <input
-                    autoComplete="off"
-                    inputMode="text"
-                    maxLength={EMPLOYEE_ID_SUFFIX_MAX_LENGTH}
-                    onChange={(event) => updateForm("employeeIdSuffix", event.target.value)}
-                    placeholder="1234"
-                    value={form.employeeIdSuffix}
-                  />
-                </div>
+                <input
+                  autoComplete="off"
+                  inputMode="text"
+                  maxLength={EMPLOYEE_ID_PREFIX.length + EMPLOYEE_ID_SUFFIX_MAX_LENGTH}
+                  onBlur={handleEmployeeIdBlur}
+                  onChange={handleEmployeeIdChange}
+                  onClick={handleEmployeeIdSelect}
+                  onFocus={handleEmployeeIdFocus}
+                  onKeyDown={handleEmployeeIdKeyDown}
+                  onSelect={handleEmployeeIdSelect}
+                  placeholder="사번 입력"
+                  value={form.employeeId}
+                />
               </label>
               <label>
                 부서
@@ -789,6 +886,18 @@ function AdminReservationList({
           <h2>전체 예약 목록</h2>
         </div>
         <div className="admin-list-header-actions">
+          <div className="admin-period-inline" aria-live="polite">
+            <span className="admin-period-inline-label">예약 가능 기간</span>
+            {periodLoading ? (
+              <span className="admin-period-inline-value">불러오는 중</span>
+            ) : period ? (
+              <strong className="admin-period-inline-value">
+                {formatCompactReservationPeriod(period)}
+              </strong>
+            ) : (
+              <strong className="admin-period-inline-value admin-period-inline-unset">미설정</strong>
+            )}
+          </div>
           <button
             className="secondary-button admin-period-button"
             onClick={() => setIsPeriodModalOpen(true)}
@@ -797,28 +906,6 @@ function AdminReservationList({
             기간 설정
           </button>
           <span className="count-badge">{filteredReservations.length}</span>
-        </div>
-      </div>
-
-      <div
-        className={`admin-period-bar${period || periodLoading ? "" : " admin-period-bar-unset"}`}
-        aria-live="polite"
-      >
-        <div className="admin-period-status">
-          <p className="section-kicker">예약 가능 기간</p>
-          {periodLoading ? (
-            <span>기간 정보를 불러오는 중입니다.</span>
-          ) : period ? (
-            <>
-              <strong>{formatReservationPeriod(period)}</strong>
-              <span>설정된 기간의 날짜만 공개 페이지에서 예약할 수 있습니다.</span>
-            </>
-          ) : (
-            <>
-              <strong>기간 미설정</strong>
-              <span>기간 설정 버튼을 눌러 예약 가능 날짜를 지정하세요.</span>
-            </>
-          )}
         </div>
       </div>
 
@@ -900,10 +987,9 @@ function AdminReservationList({
               <thead>
                 <tr>
                   <th scope="col">날짜</th>
-                  <th scope="col">이용 시간</th>
-                  <th scope="col">이름</th>
                   <th scope="col">부서</th>
                   <th scope="col">사번</th>
+                  <th scope="col">이름</th>
                   <th scope="col">
                     <span className="sr-only">관리</span>
                   </th>
@@ -915,15 +1001,11 @@ function AdminReservationList({
 
                   return (
                     <tr className={isPast ? "admin-table-row-past" : undefined} key={reservation.id}>
-                      <td data-label="날짜">
-                        <strong>{formatDateId(reservation.date)}</strong>
-                        <span>{reservation.date}</span>
-                      </td>
-                      <td data-label="이용 시간">{formatReservationWindow(reservation.date)}</td>
-                      <td data-label="이름">{reservation.name}</td>
-                      <td data-label="부서">{reservation.department}</td>
-                      <td data-label="사번">{reservation.employeeId}</td>
-                      <td data-label="관리">
+                      <td>{formatReservationUsagePeriod(reservation.date)}</td>
+                      <td>{reservation.department}</td>
+                      <td>{reservation.employeeId}</td>
+                      <td>{reservation.name}</td>
+                      <td className="admin-table-actions">
                         <button
                           className="danger-button admin-delete-button"
                           disabled={deletingId === reservation.date}
